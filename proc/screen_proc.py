@@ -16,7 +16,8 @@ class FaceRecognitionMirrorApp:
         self.program_state = tk.IntVar()
         self.program_state.set(0)
 
-        self.shared_variable = multiprocessing.Value('i', -1)
+        self.shared_variable_face_detector = multiprocessing.Value('i', -1)
+        self.shared_variable_fingers_detector = multiprocessing.Value('i', 0)
         self.detector_process = None
 
         self.label = tk.Label(self.root, text="", font=("Helvetica", 24), fg="white", bg="black")
@@ -47,29 +48,29 @@ class FaceRecognitionMirrorApp:
             button.destroy()
 
         # Starting face detector process
-        self.shared_variable.value = -1
+        self.shared_variable_face_detector.value = -1
 
-        self.detector_process = multiprocessing.Process(target=detector_function, args=(self.shared_variable,))
+        self.detector_process = multiprocessing.Process(target=detector_function, args=(self.shared_variable_face_detector,))
         self.detector_process.start()
 
-        self.check_variable()
+        self.check_variable_face_detector()
 
     def state_1(self, user_id):
         user_name = get_user_name(user_id)
-        self.label.config(text=f"Witaj {user_name}!")
+        self.label.config(text=f"Hello {user_name}!")
 
         # Usunięcie poprzednich przycisków
         for button in self.button_frame.winfo_children():
             button.destroy()
 
-        self.create_buttons(["Rozpocznij", "Anuluj"], [self.go_to_4, self.go_back_to_0])
+        self.create_buttons(["Start", "Cancel"], [self.go_to_4, self.go_back_to_0])
 
     def state_2(self):
-        self.label.config(text="Witaj Nieznajomy! Czy chciałbyś abym dodał ciebie do bazy?")
-        self.create_buttons(["Tak", "Nie"], [self.yes_action, self.go_back_to_0])
+        self.label.config(text="Hello Stranger! Would you like me to add you to the database?")
+        self.create_buttons(["1. Yes", "2. No"], [self.yes_action, self.go_back_to_0])
 
     def state_3(self):
-        self.label.config(text="Wpisz swoje imię:")
+        self.label.config(text="Type your name")
 
         # Usunięcie poprzednich przycisków
         for button in self.button_frame.winfo_children():
@@ -79,7 +80,7 @@ class FaceRecognitionMirrorApp:
         self.entry_label.pack()
         self.entry = tk.Entry(self.button_frame, width=30)
         self.entry.pack(pady=10)
-        self.button_submit = tk.Button(self.button_frame, text="Zatwierdź", font=("Helvetica", 12),
+        self.button_submit = tk.Button(self.button_frame, text="Submit", font=("Helvetica", 12),
                                        command=self.submit_action, fg="white", bg="black")
         self.button_submit.pack()
 
@@ -87,16 +88,16 @@ class FaceRecognitionMirrorApp:
         for button in self.button_frame.winfo_children():
             button.destroy()
 
-        self.label.config(text="Wybierz jedną z tych opcji:")
-        self.create_buttons(["Origami", "Gotowanie", "Spacer VR", "Anuluj"],
+        self.label.config(text="Select one of these options")
+        self.create_buttons(["Origami", "Cooking", "VR Walk", "Cancel"],
                             [self.origami_action, self.cooking_action, self.vr_walk_action, self.go_back_to_0])
 
-    def check_variable(self):
-        value = self.shared_variable.value
+    def check_variable_face_detector(self):
+        value = self.shared_variable_face_detector.value
 
         if value == -1:
             # if noone was detected
-            self.root.after(100, self.check_variable)
+            self.root.after(100, self.check_variable_face_detector)
         else:
             # if someone was detected
             self.detector_process.kill()
@@ -119,7 +120,7 @@ class FaceRecognitionMirrorApp:
         label.pack()
         entry = tk.Entry(self.button_frame, width=30)
         entry.pack(pady=10)
-        button_submit = tk.Button(self.button_frame, text="Zatwierdź", font=("Helvetica", 12), command=lambda: command(entry.get()), fg="white", bg="black")
+        button_submit = tk.Button(self.button_frame, text="Submit", font=("Helvetica", 12), command=lambda: command(entry.get()), fg="white", bg="black")
         button_submit.pack()
 
     def go_to_4(self):
@@ -137,7 +138,6 @@ class FaceRecognitionMirrorApp:
     def submit_action(self):
         name = self.entry.get()
         # Handle action for option 3
-        print(f"Action for Submit: {name}")
 
         # ukryj odpowiednie elementy
         self.entry_label.config(text="")
@@ -146,7 +146,7 @@ class FaceRecognitionMirrorApp:
         self.button_submit.pack_forget()
 
         # aktualizuj etykietę
-        self.label.config(text="Trwa dodawanie ciebie do bazy, spójrz w kamerę")
+        self.label.config(text="You are being added to the database, look at the camera")
 
         # Utwórz nowy proces i przekaż imię wprowadzone przez użytkownika
         add_entity_process = multiprocessing.Process(target=add_entity, args=(name,))
@@ -161,7 +161,7 @@ class FaceRecognitionMirrorApp:
             self.start_training_model()
 
     def start_training_model(self):
-        self.label.config(text="Trwa trenowanie modelu. To może zająć chwilę...")
+        self.label.config(text="Model training is in progress. This may take a while...")
         train_model_process = multiprocessing.Process(target=train_model)
         train_model_process.start()
 
@@ -173,8 +173,6 @@ class FaceRecognitionMirrorApp:
         else:
             self.program_state.set(0)
             self.update_screen()
-
-
 
     def origami_action(self):
         # Handle action for option 4
