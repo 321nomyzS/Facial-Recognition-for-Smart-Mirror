@@ -3,6 +3,7 @@ import mediapipe as mp
 import time
 from collections import Counter
 
+
 class HandDetector:
     def __init__(self):
         self.results = None
@@ -33,6 +34,27 @@ class HandDetector:
 
         return landmark_pos
 
+    def get_raised_fingers(self, img):
+        finger_list = self.find_position(img, draw=False)
+
+        if len(finger_list) > 0:
+            # https://developers.google.com/static/mediapipe/images/solutions/hand-landmarks.png
+
+            # Handle thumb
+            if finger_list[4][1] > finger_list[17][1]:
+                fingers_status = [finger_list[3][1] < finger_list[4][1]]
+            else:
+                fingers_status = [finger_list[3][1] > finger_list[4][1]]
+
+            # Handle rest fingers
+            fingers_status += [finger_list[8][2] < finger_list[6][2], finger_list[12][2] < finger_list[10][2],
+                               finger_list[16][2] < finger_list[14][2], finger_list[20][2] < finger_list[18][2]]
+
+            fingers_status = list(map(int, fingers_status))
+            return fingers_status
+        else:
+            return [0, 0, 0, 0, 0]
+
 
 def fingers_detector_function(shared_value):
     cam = cv2.VideoCapture(0)
@@ -46,23 +68,10 @@ def fingers_detector_function(shared_value):
         while True:
             success, img = cam.read()
             img = detector.find_hands(img, draw=False)
-            finger_list = detector.find_position(img, draw=False)
 
-            if len(finger_list) > 0:
-                # https://developers.google.com/static/mediapipe/images/solutions/hand-landmarks.png
-
-                # Handle thumb
-                if finger_list[4][1] > finger_list[17][1]:
-                    fingers_status = [finger_list[3][1] < finger_list[4][1]]
-                else:
-                    fingers_status = [finger_list[3][1] > finger_list[4][1]]
-
-                # Handle rest fingers
-                fingers_status += [finger_list[8][2] < finger_list[6][2], finger_list[12][2] < finger_list[10][2],
-                                   finger_list[16][2] < finger_list[14][2], finger_list[20][2] < finger_list[18][2]]
-
-                fingers_status = list(map(int, fingers_status))
-                data.append(sum(fingers_status))
+            fingers_status = detector.get_raised_fingers(img)
+            fingers_status = list(map(int, fingers_status))
+            data.append(sum(fingers_status))
 
             current_time = time.time()
             delta = current_time - start_time
